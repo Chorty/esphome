@@ -287,7 +287,7 @@ def _load_model_data(manifest_path: Path):
     except cv.Invalid as e:
         raise EsphomeError(f"Invalid manifest file: {e}") from e
 
-    model_path = urljoin(str(manifest_path), manifest[CONF_MODEL])
+    model_path = manifest_path.parent / manifest[CONF_MODEL]
 
     with open(model_path, "rb") as f:
         model = f.read()
@@ -312,6 +312,7 @@ async def to_code(config):
     esp32.add_idf_component(
         name="esp-tflite-micro",
         repo="https://github.com/espressif/esp-tflite-micro",
+        ref="v1.3.1",
     )
 
     cg.add_build_flag("-DTF_LITE_STATIC_MEMORY")
@@ -329,10 +330,13 @@ async def to_code(config):
         file: Path = base_dir / h.hexdigest()[:8] / model_config[CONF_FILE]
 
     elif model_config[CONF_TYPE] == TYPE_LOCAL:
-        file = model_config[CONF_PATH]
+        file = Path(model_config[CONF_PATH])
 
     elif model_config[CONF_TYPE] == TYPE_HTTP:
         file = _compute_local_file_path(model_config) / "manifest.json"
+
+    else:
+        raise ValueError("Unsupported config type: {model_config[CONF_TYPE]}")
 
     manifest, data = _load_model_data(file)
 
